@@ -1,0 +1,57 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import List, Optional
+import requests
+from bs4 import BeautifulSoup
+
+app = FastAPI()
+
+# Pydantic model to structure business data
+class Business(BaseModel):
+    name: str
+    discount: str
+    address: str
+    phone: str
+    website: str
+
+# Function to scrape Yelp or similar site for business data (student discount info)
+def scrape_yelp_data(business_type: str, location: str) -> List[Business]:
+    url = f"https://www.yelp.com/search?find_desc={business_type}&find_loc={location}"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        return []
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    businesses = []
+
+    # Example scraping logic for Yelp (you'll need to adapt based on actual HTML structure)
+    for business in soup.find_all("div", class_="container__09f24__21w3G"):
+        try:
+            name = business.find("a", class_="css-1m051bw").get_text()
+            discount = "Student discount available"  # You would add logic to scrape actual discount info
+            address = business.find("address").get_text() if business.find("address") else "N/A"
+            phone = business.find("p", class_="css-1p8v63v").get_text() if business.find("p", class_="css-1p8v63v") else "N/A"
+            website = business.find("a", class_="css-166la90")["href"] if business.find("a", class_="css-166la90") else "N/A"
+            
+            businesses.append(Business(name=name, discount=discount, address=address, phone=phone, website=website))
+
+        except AttributeError:
+            continue  # Skip businesses with missing information
+
+    return businesses
+
+# API Endpoint to handle business search requests
+@app.get("/search", response_model=List[Business])
+async def search_business(business_type: str, location: str, min_rating: Optional[float] = 0):
+    businesses = scrape_yelp_data(business_type, location)
+    
+    # Filter by minimum rating if needed
+    filtered_businesses = [business for business in businesses if business.rating >= min_rating]
+    
+    return filtered_businesses
+
+# For error handling
+@app.exception_handler(Exception)
+async def validation_exception_handler(request, exc):
+    return {"message": f"An error occurred: {str(exc)}"}
