@@ -1,0 +1,42 @@
+import React, { useState } from "react";
+
+export default function App() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+
+  const searchDiscounts = async () => {
+    if (!query) return;
+    const response = await fetch(`/search?query=${query}`);
+    const data = await response.json();
+    setResults(data);
+  };
+
+  return (
+    <div className="p-6 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Find Student Discounts in Zwolle</h1>
+      <input
+        type="text"
+        className="border p-2 w-full rounded"
+        placeholder="Search for businesses..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <button
+        className="bg-blue-500 text-white px-4 py-2 rounded mt-2 w-full"
+        onClick={searchDiscounts}
+      >
+        Search
+      </button>
+      <ul className="mt-4">
+        {results.map((item, index) => (
+          <li key={index} className="border-b p-2">
+            <a href={item.link} className="text-blue-600" target="_blank" rel="noopener noreferrer">
+              {item.title}
+            </a>
+            <p>{item.snippet}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
