@@ -1,0 +1,21 @@
+import requests
+from bs4 import BeautifulSoup
+
+def scrape_student_discounts(url):
+    # Send a request to the website
+    response = requests.get(url)
+    # Parse the HTML content
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Find all elements that contain discount information
+    discounts = soup.find_all('div', class_='discount-item')
+    
+    # Extract and print the discount details
+    for discount in discounts:
+        title = discount.find('h2').text
+        description = discount.find('p').text
+        print(f'Title: {title}\nDescription: {description}\n')
+
+# Example URL (replace with a real URL for student discounts in Zwolle)
+url = 'http://example.com/student-discounts-zwolle'
+scrape_student_discounts(url)
