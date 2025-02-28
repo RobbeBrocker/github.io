@@ -1,0 +1,56 @@
+from flask import Flask, request, jsonify, render_template
+import requests
+from bs4 import BeautifulSoup
+import random
+import logging
+
+app = Flask(__name__)
+logging.basicConfig(level=logging.ERROR)
+
+# Function to scrape student discounts in Zwolle
+def scrape_discounts(query):
+    search_url = f"https://www.google.com/search?q={query}+student+discount+Zwolle"
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    ]
+    headers = {"User-Agent": random.choice(user_agents)}
+    response = requests.get(search_url, headers=headers)
+    
+    if response.status_code != 200:
+        logging.error(f"Failed to fetch data from Google. Status code: {response.status_code}")
+        return [{"error": "Failed to retrieve data. Please try again later."}]
+    
+    soup = BeautifulSoup(response.text, "html.parser")
+    results = []
+    
+    result_containers = soup.find_all('div', class_='tF2Cxc')
+    if not result_containers:
+        logging.warning("Google search structure may have changed. No results found.")
+    
+    for g in result_containers:
+        title = g.find('h3').text if g.find('h3') else 'No Title'
+        link = g.find('a')['href'] if g.find('a') else '#'
+        snippet = g.find('span', class_='aCOpRe').text if g.find('span', class_='aCOpRe') else 'No Description'
+        
+        results.append({
+            "title": title,
+            "link": link,
+            "snippet": snippet
+        })
+    
+    return results
+
+@app.route('/')
+def home():
+    return render_template("index.html")
+
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('query', 'local businesses')
+    data = scrape_discounts(query)
+    return jsonify(data)
+
+if __name__ == '__main__':
+    app.run(debug=True)
